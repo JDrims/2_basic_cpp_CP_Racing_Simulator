@@ -1,4 +1,4 @@
-#include <iostream>
+#pragma once
 
 #ifdef LIB_EXPORTS
 #define DLL_API __declspec(dllexport)
@@ -6,7 +6,7 @@
 #define DLL_API __declspec(dllimport)
 #endif
 
-int DLL_API main() {
+class DLL_API Vehicle
+{
 
-	return 0;
-}
+};
