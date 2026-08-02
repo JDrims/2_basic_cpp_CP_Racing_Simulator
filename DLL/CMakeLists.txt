@@ -29,5 +29,6 @@ add_library(DLL SHARED
 )
 
 target_include_directories(DLL PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/header)
+target_include_directories(DLL PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/source)
 
 target_compile_definitions(DLL PRIVATE LIB_EXPORTS)
