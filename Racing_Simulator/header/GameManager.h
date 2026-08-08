@@ -1,5 +1,5 @@
 #pragma once
-#include <Vehicle.h>
+#include "RaceAPI.h"
 #include <iostream>
 #include <string>
 
@@ -14,22 +14,24 @@ class GameManager
 	bool activeGame;
 	TypeRace typeRace;
 	unsigned int lengthRace;
-	Vehicle** transports;
-	unsigned int countTransports;
+
+	void* m_race;
+	//std::vector<std::string> availableNames;
+
+	void selectTypeRace();
+	void enterLengthRace();
+	void actionRace();
+	void registerTransport();
+	void deleteTransport();
+	void startRace();
+	void showResults();
+
+	std::string getTypeName() const;
+	void printAvailableVehicles() const;
 
 public:
 	GameManager();
 	~GameManager();
 
 	void run();
-	void selectTypeRace();
-	void enterLengthRace();
-	void actionRace();
-	void registerTransport();
-	std::string getNameLastTransport();
-	std::string getNameTypeRace();
-	std::string getArrRegTransports();
-	void deleteTransport();
-	void race();
-	void resultRace();
 };

@@ -9,7 +9,7 @@ add_executable (Racing_Simulator
 "main.cpp"
 "header/GameManager.h"
 "source/GameManager.cpp"
-)
+ "header/RaceAPI.h")
 
 target_link_libraries(Racing_Simulator PRIVATE DLL)
 
