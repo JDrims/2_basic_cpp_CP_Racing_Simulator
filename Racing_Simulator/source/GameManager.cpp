@@ -1,24 +1,16 @@
 #include "GameManager.h"
+#include <limits>
 
-GameManager::GameManager() 
+GameManager::GameManager()
 	: activeGame(true)
-	, typeRace(TypeRace::GROUND)
+	, typeRace(tRace::NONE)
 	, lengthRace(0)
 	, m_race(nullptr) {
-	// Загружаем список доступных ТС из DLL (кэшируем)
-	int count = 0;
-	const char** names = lib::getAvailableVehicles(count);
-	//availableNames.clear();
-	//for (int i = 0; i < count; ++i) {
-	//	availableNames.push_back(names[i]);
-	//}
-	lib::freeAvailableVehicles(names, count);
-
 }
 
 GameManager::~GameManager() {
 	if (m_race) {
-		lib::destroyRace(m_race);
+		destroyRace(m_race);
 		m_race = nullptr;
 	}
 }
@@ -29,10 +21,10 @@ void GameManager::run() {
 		enterLengthRace();
 
 		if (m_race) {
-			lib::destroyRace(m_race);
+			destroyRace(m_race);
 			m_race = nullptr;
 		}
-		m_race = lib::createRace(static_cast<int>(typeRace), lengthRace);
+		m_race = createRace(static_cast<int>(typeRace), lengthRace);
 		if (!m_race) {
 			std::cerr << "Ошибка создания гонки!\n";
 			continue;
@@ -40,13 +32,13 @@ void GameManager::run() {
 
 		bool raceFinished = false;
 		while (!raceFinished) {
-			actionRace();
+			raceFinished = actionRace();
 		}
 
 		showResults();
 
 		if (m_race) {
-			lib::destroyRace(m_race);
+			destroyRace(m_race);
 			m_race = nullptr;
 		}
 	}
@@ -66,16 +58,13 @@ void GameManager::selectTypeRace() {
 		if (std::cin.fail()) {
 			std::cin.clear();
 			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-			std::cout << "Введите число!\n";
 			continue;
 		}
 		if (choice >= 1 && choice <= 3) {
-			typeRace = static_cast<TypeRace>(choice);
+			typeRace = static_cast<tRace>(choice);
 			break;
 		}
-		else {
-			std::cout << "Введен неверный тип гонки\n";
-		}
+		else std::cout << "Введен неверный тип гонки\n";
 	} while (true);
 }
 
@@ -88,7 +77,6 @@ void GameManager::enterLengthRace() {
 		if (std::cin.fail()) {
 			std::cin.clear();
 			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-			std::cout << "Введите положительное целое число: ";
 			continue;
 		}
 		if (len > 0) {
@@ -101,149 +89,201 @@ void GameManager::enterLengthRace() {
 	} while (true);
 }
 
-void GameManager::actionRace() {
+bool GameManager::actionRace() {
 	bool exitAction = false;
-	while (!exitAction) {
+	bool started = false;
+	do {
 		system("cls");
 		std::cout << "Гонка для " << getTypeName() << " транспорта. Расстояние: " << lengthRace << "\n";
-		int count = lib::getVehicleCount(m_race);
-		std::cout << "Зарегистрировано транспортных средств: " << count << "\n";
-		std::cout << "Должно быть зарегистрировано хотя бы 2 ТС.\n";
+		int count = getVehicleCount(m_race);
+		if (count > 0) std::cout << "Зарегистрировано транспортных средств: " << printStrRegVehicles() << "\n";
+		if (count < 2) std::cout << "Должно быть зарегистрировано хотя бы 2 ТС.\n";
 		std::cout << "1. Зарегистрировать транспорт\n";
 		if (count > 0) std::cout << "2. Убрать транспорт\n";
 		if (count >= 2) std::cout << "3. Начать гонку\n";
 		std::cout << "Выберите действие: ";
 
-		int action = 0;
-		std::cin >> action;
-		if (std::cin.fail()) {
-			std::cin.clear();
-			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-			std::cout << "Введите число!\n";
-			continue;
-		}
+		bool exitAction = false;
+		do {
+			int action = 0;
+			std::cin >> action;
+			if (std::cin.fail()) {
+				std::cin.clear();
+				std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+				std::cout << "Введите число из списка действий: ";
+				continue;
+			}
 
-		switch (action) {
-		case 1:
-			registerTransport();
-			break;
-		case 2:
-			if (count > 0) deleteTransport();
-			else std::cout << "Нет зарегистрированных ТС\n";
-			break;
-		case 3:
-			if (count >= 2) {
-				startRace();
+			switch (action) {
+			case 1:
+				registerTransport();
 				exitAction = true;
+				break;
+			case 2:
+				if (count > 0) {
+					exitAction = true;
+					deleteTransport();
+				}	
+				else std::cout << "Неверное действие\n";
+				break;
+			case 3:
+				if (count >= 2) {
+					startRace(m_race);
+					exitAction = true;
+					started = true;
+				}
+				else std::cout << "Неверное действие\n";
+				break;
+			default:
+				std::cout << "Неверное действие\n";
 			}
-			else {
-				std::cout << "Недостаточно ТС для старта (нужно минимум 2).\n";
-			}
-			break;
-		default:
-			std::cout << "Неверное действие\n";
-		}
-		std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-	}
+		} while (!exitAction);
+	} while (!started);
+	return started;
 }
 
 void GameManager::registerTransport() {
-	bool isRegisterTransport = false;
-	bool newTransport = false;
+	bool exitAction = false;
+	bool isRegVehicle = false;
+	int numVehicle = -1;
 	do {
-		std::system("cls");
-		if (newTransport && countTransports > 0)
-			std::cout << getNameLastTransport() << " успешно зарегистрирован!";
-		std::cout << "Гонка для " << getNameTypeRace() 
-			<< " транспорта. Расстояние: " << lengthRace << std::endl;
-		if (countTransports > 0)
-			std::cout << "Зарегистрированные транспортные средства: " << getArrRegTransports();
-		//СПИСОК ТРАНСПОРТА
-		//std::cout << 1 << ". " << "Название";
-		//std::cout << 0 << ". " << "Закончить регистрацию";
-		//std::cout << "Выберите транспорт или 0 для окончания процесса регистрации: ";
-		//int selTransport;
-		//std::cin >> selTransport;
-		//РЕГИСТРАЦИЯ
-		break;
-	} while (!isRegisterTransport);
+		system("cls");
+		if (isRegVehicle && numVehicle > 0) std::cout << getNameByNumVehicles(numVehicle) << " успешно зарегистрирован!\n";
+		else if (!isRegVehicle && numVehicle > 0) std::cout << "Попытка зарегистрировать неверный тип транспортного средства!\n";
 
-	//std::cout << "Попытка зарегистрировать неправильный тип транспортного средства!";
+		std::cout << "Гонка для " << getTypeName() << " транспорта. Расстояние: " << lengthRace << "\n";
+		int count = getVehicleCount(m_race);
+		if (count > 0) std::cout << "Зарегистрировано транспортных средств: " << printStrRegVehicles() << "\n";
+		if (count < 2) std::cout << "Должно быть зарегистрировано хотя бы 2 ТС.\n";
+		std::cout << "Доступные транспортные средства:\n";
+		printAvailableVehicles();
+		std::cout << "Выберите транспорт или 0 для окончания процесса регистрации: ";
+
+		std::cin >> numVehicle;
+		if (std::cin.fail()) {
+			std::cin.clear();
+			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+			continue;
+		}
+
+		switch (numVehicle) {
+		case 0:
+			exitAction = true;
+			break;
+		default:
+			isRegVehicle = addVehicle(m_race, numVehicle);
+		}
+	} while (!exitAction);
 }
 
 void GameManager::deleteTransport() {
-	//std::cout << "Название" << " успешно исключен из списка!";
+	bool exitAction = false;
+	bool isDelVehicle = false;
+	int numVehicle = -1;
+	while (!exitAction) {
+		system("cls");
+		if (isDelVehicle && numVehicle > 0) std::cout << getNameByNumVehicles(numVehicle) << " успешно исключён из списка!\n";
+		else if (!isDelVehicle && numVehicle > 0) std::cout << "Попытка исключить из списка неверный тип транспортного средства!\n";
 
-	bool isRegisterTransport = false;
-	bool newTransport = false;
-	do {
-		std::system("cls");
-		if (newTransport && countTransports > 0)
-			std::cout << getNameLastTransport() << " успешно зарегистрирован!";
-		std::cout << "Гонка для " << getNameTypeRace()
-			<< " транспорта. Расстояние: " << lengthRace << std::endl;
-		if (countTransports > 0)
-			std::cout << "Зарегистрированные транспортные средства: " << getArrRegTransports();
-		//СПИСОК ТРАНСПОРТА
-		//std::cout << 1 << ". " << "Название";
-		//std::cout << 0 << ". " << "Закончить регистрацию";
-		//std::cout << "Выберите транспорт или 0 для окончания процесса регистрации: ";
-		//int selTransport;
-		//std::cin >> selTransport;
-		//РЕГИСТРАЦИЯ
-		break;
-	} while (!isRegisterTransport);
+		std::cout << "Гонка для " << getTypeName() << " транспорта. Расстояние: " << lengthRace << "\n";
+		int count = getVehicleCount(m_race);
+		if (count < 2) std::cout << "Должно быть зарегистрировано хотя бы 2 ТС.\n";
+		std::cout << "Зарегистрированые транспортные средства:\n";
+		printListRegVehicles();
+		std::cout << "Выберите транспорт или 0 для окончания процесса редактирования: ";
 
-	//std::cout << "Попытка удалить неправильный тип транспортного средства!";
-}
+		std::cin >> numVehicle;
+		if (std::cin.fail()) {
+			std::cin.clear();
+			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+			continue;
+		}
 
-void GameManager::startRace() {
-	lib::startRace(m_race);
-	std::cout << "Гонка завершена!\n";
+		switch (numVehicle) {
+		case 0:
+			exitAction = true;
+			break;
+		default:
+			isDelVehicle = removeVehicle(m_race, numVehicle);
+		}
+	}
 }
 
 void GameManager::showResults() {
-	system("cls");
-	const char* results = lib::getResults(m_race);
-	std::cout << "Результат гонки:\n" << results << "\n";
-	lib::freeResult(results); // освобождаем память, выделенную в DLL
-
-	std::cout << "\n1. Провести ещё одну гонку\n";
-	std::cout << "2. Выйти\n";
-	std::cout << "Выберите действие: ";
-	int choice = 0;
+	bool exitAction = false;
 	do {
+		system("cls");
+		const char* results = getResults(m_race);
+		std::cout << "Результат гонки:\n" << results << "\n";
+		freeResult(results);
+
+		std::cout << "\n1. Провести ещё одну гонку\n";
+		std::cout << "2. Выйти\n";
+		std::cout << "Выберите действие: ";
+		int choice = 0;
+
 		std::cin >> choice;
 		if (std::cin.fail()) {
 			std::cin.clear();
 			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 			continue;
 		}
-		if (choice == 1) {
+		switch (choice)
+		{
+		case 1:
 			activeGame = true;
+			exitAction = true;
 			break;
-		}
-		else if (choice == 2) {
+		case 2:
 			activeGame = false;
+			exitAction = true;
+			break;
+		default:
+			std::cout << "Неверный выбор. Повторите: ";
 			break;
 		}
-		else {
-			std::cout << "Неверный выбор. Повторите: ";
-		}
-	} while (true);
+	} while (!exitAction);
 }
 
 std::string GameManager::getTypeName() const {
-	switch (typeRace) {
-	case TypeRace::GROUND: return "наземного";
-	case TypeRace::AERIAL: return "воздушного";
-	case TypeRace::GROUND_AND_AERIAL: return "наземного и воздушного";
+	switch (static_cast<tRace>(typeRace)) {
+	case tRace::GROUND: return "наземного";
+	case tRace::AERIAL: return "воздушного";
+	case tRace::GROUND_AND_AERIAL : return "наземного и воздушного";
 	default: return "неизвестного";
 	}
 }
 
-void GameManager::printAvailableVehicles() const {
-	//for (size_t i = 0; i < availableNames.size(); ++i) {
-	//	std::cout << i + 1 << ". " << availableNames[i] << "\n";
-	//}
+void GameManager::printAvailableVehicles() {
+	int count = 0;
+	const char** names = getAvailableVehicles(count);
+	for (int i = 0; i < count; ++i) {
+		std::cout << i + 1 << ". " << names[i] << "\n";
+	}
+	freeAvailableVehicles(names, count);
+}
+
+void GameManager::printListRegVehicles() {
+	int count = 0;
+	const char** names = getRegisteredVehicles(m_race, count);
+	if (count == 0) {
+		std::cout << "Нет зарегистрированых транспортных средст" << std::endl;
+		return;
+	}
+	for (int i = 0; i < count; ++i) {
+		std::cout << i + 1 << ". " << names[i] << "\n";
+	}
+	freeStringArray(names, count);
+}
+
+std::string GameManager::printStrRegVehicles() const {
+	int count = 0;
+	std::string strNames("");
+	const char** names = getRegisteredVehicles(m_race, count);
+	for (int i = 0; i < count; ++i) {
+		strNames += names[i];
+		if (i < count - 1) strNames += ", ";
+	}
+	freeStringArray(names, count);
+	return strNames;
 }

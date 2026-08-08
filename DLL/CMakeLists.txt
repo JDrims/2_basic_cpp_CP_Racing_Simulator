@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(DLL SHARED
  "header/Vehicle.h"
- "source/Vehicle.cpp"
  "header/GroundVehicle.h"
  "source/GroundVehicle.cpp"
  "header/AirVehicle.h"
@@ -26,9 +25,19 @@ add_library(DLL SHARED
  "source/Eagle.cpp"
  "header/Broom.h"
  "source/Broom.cpp"
-)
+ "header/Race.h"
+ "source/Race.cpp"
+ "header/GroundRace.h"
+ "source/GroundRace.cpp"
+ "header/AirRace.h"
+ "source/AirRace.cpp"
+ "header/MixedRace.h"
+ "source/MixedRace.cpp"
+ "header/RaceAPI.h"
+ "source/RaceAPI.cpp"
+ "header/TypeDef.h")
 
 target_include_directories(DLL PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/header)
 target_include_directories(DLL PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/source)
 
-target_compile_definitions(DLL PRIVATE LIB_EXPORTS)
+target_compile_definitions(DLL PRIVATE RACE_LIBRARY_EXPORTS)
