@@ -12,6 +12,8 @@
 #include "Broom.h"
 
 #include <TypeDef.h>
+#include <iomanip>
+#include <sstream>
 #include <vector>
 #include <string>
 #include <cstring>
@@ -74,13 +76,15 @@ extern "C" {
         Race* race = static_cast<Race*>(racePtr);
         auto results = race->getResults();
 
-        int count = static_cast<int>(results.size());
-        std::string strResult("");
-        const char** list = new const char* [count];
-        for (int i = 0; i < count; ++i) {
-            strResult += std::to_string(i + 1) + ". " + results[i].first + ". Время: " + std::to_string(results[i].second);
-            if (i < count - 1) strResult += "\n";
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2);
+        int place = 1;
+        for (size_t i = 0; i < results.size(); ++i) {
+            oss << place++ << ". " << results[i].first << ". Время: " << results[i].second;
+            if (i < results.size() - 1) oss << "\n";
         }
+
+        std::string strResult = oss.str();
         char* buffer = new char[strResult.size() + 1];
         strcpy(buffer, strResult.c_str());
         return buffer;
