@@ -4,8 +4,9 @@
 class DLL_API AllTerrainBoots : public GroundVehicle {
 private:
     static constexpr double SPEED = 6.0;
-    static constexpr double REST_INTERVAL = 60.0;
-    static constexpr double REST_DURATION = 10.0;
+    static constexpr double TIME_MOVEMENT = 60.0;
+    static constexpr double FIRST_REST = 10.0;
+    static constexpr double ORDER_REST = 5.0;
 
 public:
     std::string getName() const override { return "Ботинки-вездеходы"; }

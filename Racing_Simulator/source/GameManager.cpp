@@ -172,6 +172,11 @@ void GameManager::registerTransport() {
 			break;
 		default:
 			isRegVehicle = addVehicle(m_race, numVehicle);
+			int count = getVehicleCount(m_race);
+			if (count >= 7) {
+				exitAction = true;
+				break;
+			}
 		}
 	} while (!exitAction);
 }
