@@ -63,6 +63,6 @@
 
 ![alt text](images/image-11.png)
 
-![alt text](images/image-12_2.png)
+![alt text](images/image-12_3.png)
 
 ---
